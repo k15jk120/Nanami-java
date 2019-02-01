@@ -5,13 +5,13 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import java.util.Scanner;
 
-public class Scheduling2{
-    static int ContainerCreate(int i){
+public class ContainerScheduling{
+
+    static void ContainerCreate(int create_container_number){
         try{
-            Process process = new ProcessBuilder("docker", "run", "--name", "nanami"+i, "ubuntu").start();
+            Process process = new ProcessBuilder("docker", "run", "--name", "nanami"+create_container_number, "ubuntu").start();
             System.out.println("Create");
-            System.out.println("nanami"+i);
-            i+=1;
+            System.out.println("nanami"+create_container_number);
             String text;
             InputStream is = process.getInputStream();
             InputStreamReader isr = new InputStreamReader(is, "UTF-8");
@@ -26,14 +26,12 @@ public class Scheduling2{
         }catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
-        return i;
     }
 
-    static int ContainerDelete(int x){
+    static void ContainerDelete(int delete_container_number){
 
         try{
-            Process process = new ProcessBuilder("docker", "rm", "nanami"+x).start();
-            x += 1;
+            Process process = new ProcessBuilder("docker", "rm", "nanami"+delete_container_number).start();
             System.out.println("Delete");
             String text;
             InputStream is = process.getInputStream();
@@ -51,52 +49,62 @@ public class Scheduling2{
         }catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
-        return x;
     }
-
     public static void main(String[] args) throws InterruptedException{
-        int index = 1;
-        int y = 1;
-        int prehttp = 1;
-        int difhttp;
-        int threshold = 10;
-        int min_container = 1;
-        int sleeptime = 20;
-        index = ContainerCreate(index);
-        while(true){
-            try{
-                Process process = new ProcessBuilder("sh", "httprequest.sh").start();
-                String text;
-                InputStream is = process.getInputStream();
-                InputStreamReader isr = new InputStreamReader(is, "UTF-8");
-                BufferedReader reader = new BufferedReader(isr);
-                StringBuilder builder = new StringBuilder();
-                int c;
-                while ((c = reader.read()) != -1) {
-                    builder.append((char)c);
-                }
-                // 実行結果を格納
-                text = builder.toString();
-                int http = Integer.parseInt(text.replace("\n",""));
-                System.out.println("同時接続数"+http);
-                difhttp = http/threshold - prehttp/threshold;
-                System.out.println(prehttp);
-                prehttp = http;
-                int ret = process.waitFor();
-                if(difhttp > 0){
-                    for(int a = 0;a < difhttp;a++){
-                        index = ContainerCreate(index);
-                    }
-                }else if(difhttp < 0 && index-y > min_container){
-                    for(int b = 0;b < -difhttp;b++){
-                        y = ContainerDelete(y);
-                    }
-                }
-            }catch (IOException | InterruptedException e) {
-                e.printStackTrace();
-            }
+      int create_container_number = 1;
+      int delete_container_number = 1;
+      int http;
+      int current_container_count = 1;
+      int necessary_container_count;
+      int change_container_count;
+      int threshold = 10;
+      int min_container_count = 1;
+      int sleeptime = 20;
+      //create_container_number = ContainerCreate(create_container_number);
+      ContainerCreate(create_container_number);
+      create_container_number++;
+      while(true){
+          try{
+              Process process = new ProcessBuilder("sh", "httprequest.sh").start();
+              String text;
+              InputStream is = process.getInputStream();
+              InputStreamReader isr = new InputStreamReader(is, "UTF-8");
+              BufferedReader reader = new BufferedReader(isr);
+              StringBuilder builder = new StringBuilder();
+              int c;
+              while ((c = reader.read()) != -1) {
+                  builder.append((char)c);
+              }
+              // 実行結果を格納
+              text = builder.toString();
+              http = Integer.parseInt(text.replace("\n",""));
+              System.out.println("同時接続数"+http);
+              necessary_container_count = http/threshold;
+              if(necessary_container_count < min_container_count){
+                  necessary_container_count = min_container_count;
+              }
+              change_container_count = necessary_container_count - current_container_count;
+              int ret = process.waitFor();
+              if(change_container_count > 0){
+                  for(int i = 0;i < change_container_count;i++){
+                      ContainerCreate(create_container_number);
+                      create_container_number++;
+                      current_container_count++;
 
-            TimeUnit.SECONDS.sleep(sleeptime);
-        }
+                  }
+              }else if(change_container_count < 0){
+                  for(int i = 0;i < -change_container_count;i++){
+                          ContainerDelete(delete_container_number);
+                          delete_container_number++;
+                          current_container_count--;
+                  }
+              }
+          }catch (IOException | InterruptedException e) {
+              e.printStackTrace();
+          }
+
+          TimeUnit.SECONDS.sleep(sleeptime);
+    
+      }
     }
 }
