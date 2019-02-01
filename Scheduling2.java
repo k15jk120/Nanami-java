@@ -94,9 +94,9 @@ public class ContainerScheduling{
                   }
               }else if(change_container_count < 0){
                   for(int i = 0;i < -change_container_count;i++){
-                          ContainerDelete(delete_container_number);
-                          delete_container_number++;
-                          current_container_count--;
+                      ContainerDelete(delete_container_number);
+                      delete_container_number++;
+                      current_container_count--;
                   }
               }
           }catch (IOException | InterruptedException e) {
